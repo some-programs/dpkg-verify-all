@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -18,6 +19,10 @@ type output struct {
 }
 
 func main() {
+	var nWorkers int
+	flag.IntVar(&nWorkers, "workers", runtime.NumCPU()+1, "number of workers")
+	flag.Parse()
+
 	cmd := exec.Command("dpkg-query", "--show", "--showformat", "${binary:Package}\n")
 	out, err := cmd.Output()
 	if err != nil {
@@ -30,7 +35,7 @@ func main() {
 			packages = append(packages, v)
 		}
 	}
-	nWorkers := runtime.NumCPU() +1
+
 	fmt.Printf("Verifying %d packages using %d workers...\n", len(packages), nWorkers)
 	outputC := make(chan output, 100)
 	var reporterWg sync.WaitGroup
