@@ -18,11 +18,19 @@ type output struct {
 	Error   bool     // error executing package
 }
 
-func main() {
-	var nWorkers int
-	flag.IntVar(&nWorkers, "workers", runtime.NumCPU()+1, "number of workers")
-	flag.Parse()
+func (o output) String() string {
+	return fmt.Sprintf("%v (err:%v): %v", o.Package, o.Error, o.Output)
 
+}
+
+func main() {
+	var (
+		nWorkers int
+		verbose  int
+	)
+	flag.IntVar(&nWorkers, "workers", runtime.NumCPU()+1, "number of workers")
+	flag.IntVar(&verbose, "verbose", 0, "verbose output 0=none, 5=max")
+	flag.Parse()
 	cmd := exec.Command("dpkg-query", "--show", "--showformat", "${binary:Package}\n")
 	out, err := cmd.Output()
 	if err != nil {
@@ -35,14 +43,18 @@ func main() {
 			packages = append(packages, v)
 		}
 	}
-
-	fmt.Printf("Verifying %d packages using %d workers...\n", len(packages), nWorkers)
+	if verbose > 0 {
+		log.Printf("Verifying %d packages using %d workers...", len(packages), nWorkers)
+	}
 	outputC := make(chan output, 100)
 	var reporterWg sync.WaitGroup
 	reporterWg.Add(1)
 	go func() {
 		var errors, outputs []output
 		for e := range outputC {
+			if verbose > 2 {
+				log.Println(e)
+			}
 			if e.Error {
 				errors = append(errors, e)
 			} else {
@@ -96,9 +108,11 @@ func main() {
 	n := 0
 	for _, v := range packages {
 		c <- v
-		n++
-		if n%100 == 0 {
-			fmt.Printf("Started verification of %d packagages...\n", n)
+		if verbose > 1 {
+			n++
+			if n%100 == 0 {
+				log.Printf("Started verification of %d packagages...", n)
+			}
 		}
 	}
 	close(c)
