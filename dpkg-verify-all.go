@@ -20,7 +20,6 @@ type output struct {
 
 func (o output) String() string {
 	return fmt.Sprintf("%v (err:%v): %v", o.Package, o.Error, o.Output)
-
 }
 
 func main() {
